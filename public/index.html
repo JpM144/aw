@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Foro en vivo</title>
+<style>
+  :root {
+    --bg: #f3f4f6; --card: #ffffff; --text: #111827; --muted: #6b7280; --line: #e5e7eb;
+    --favor: #059669; --favor-soft: #d1fae5; --contra: #dc2626; --contra-soft: #fee2e2;
+    --accent: #2563eb; --hand: #f59e0b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0b0f17; --card: #151b26; --text: #f3f4f6; --muted: #9ca3af; --line: #263041;
+      --favor-soft: #06352a; --contra-soft: #3b1414; }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 4px 0 16px; text-align: center; }
+  .card { background: var(--card); border-radius: 18px; padding: 16px; margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  input { width: 100%; font-size: 18px; padding: 14px; border-radius: 12px; border: 2px solid var(--line);
+    background: var(--bg); color: var(--text); outline: none; }
+  input:focus { border-color: var(--accent); }
+  button { font: inherit; border: 0; border-radius: 14px; cursor: pointer; font-weight: 700; }
+  .btn-main { width: 100%; padding: 16px; font-size: 18px; background: var(--accent); color: #fff; margin-top: 12px; }
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-size: 14px; }
+
+  /* Orador */
+  .orador { text-align: center; padding: 20px 16px; transition: background .3s; }
+  .orador.libre { background: var(--card); }
+  .orador.favor { background: var(--favor); color: #fff; }
+  .orador.contra { background: var(--contra); color: #fff; }
+  .orador .etq { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; opacity: .85; }
+  .orador .nombre { font-size: 28px; font-weight: 800; margin: 6px 0; word-break: break-word; }
+  .reloj { font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .barra { height: 8px; border-radius: 99px; background: rgba(255,255,255,.3); overflow: hidden; margin-top: 10px; }
+  .barra > div { height: 100%; background: #fff; width: 100%; }
+
+  /* Mano */
+  .btn-mano { width: 100%; padding: 22px; font-size: 22px; background: var(--hand); color: #111; }
+  .btn-mano:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-ceder { width: 100%; padding: 12px; margin-top: 10px; background: transparent; color: var(--muted);
+    border: 2px solid var(--line); }
+
+  /* Elegir lado */
+  .lados { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .lado { padding: 16px 8px; font-size: 17px; border: 3px solid transparent; }
+  .lado.favor { background: var(--favor-soft); color: var(--favor); }
+  .lado.contra { background: var(--contra-soft); color: var(--contra); }
+  .lado.activo.favor { background: var(--favor); color: #fff; border-color: var(--favor); }
+  .lado.activo.contra { background: var(--contra); color: #fff; border-color: var(--contra); }
+
+  /* Grupos */
+  .grupos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grupo h3 { margin: 0 0 8px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .grupo.favor h3 { color: var(--favor); } .grupo.contra h3 { color: var(--contra); }
+  .cuenta { font-size: 22px; }
+  .medidor { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--line); margin: 4px 0 14px; }
+  .medidor .f { background: var(--favor); transition: width .4s; } .medidor .c { background: var(--contra); transition: width .4s; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { padding: 7px 10px; border-radius: 10px; margin-bottom: 5px; font-size: 15px; background: var(--bg);
+    word-break: break-word; display: flex; align-items: center; gap: 6px; }
+  li.yo { outline: 2px solid var(--accent); }
+  li.off { opacity: .45; }
+  li.habla { background: var(--hand); color: #111; font-weight: 700; }
+  .sinlado { margin-top: 10px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #111827; color: #fff;
+    padding: 12px 18px; border-radius: 12px; font-size: 15px; max-width: 90%; text-align: center; z-index: 9; }
+  .estado-con { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .salir { background: none; color: var(--muted); font-weight: 500; text-decoration: underline; padding: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🗣️ Foro en vivo</h1>
+
+  <!-- Pantalla de ingreso -->
+  <section id="ingreso" class="card hidden">
+    <label for="nombre" class="muted">¿Cómo te llamas?</label>
+    <input id="nombre" maxlength="30" autocomplete="name" placeholder="Tu nombre" style="margin-top:8px">
+    <button id="entrar" class="btn-main">Entrar al foro</button>
+  </section>
+
+  <!-- Pantalla principal -->
+  <section id="foro" class="hidden">
+    <div id="orador" class="card orador libre">
+      <div class="etq" id="oEtq">Nadie tiene la palabra</div>
+      <div class="nombre" id="oNombre">✋ La palabra está libre</div>
+      <div id="oReloj" class="hidden">
+        <div class="reloj" id="oSeg">20</div>
+        <div class="barra"><div id="oBarra"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <button id="mano" class="btn-mano">✋ Alzar la mano</button>
+      <button id="ceder" class="btn-ceder hidden">Terminé, ceder la palabra</button>
+    </div>
+
+    <div class="card">
+      <div class="muted" style="margin-bottom:8px">Tu postura:</div>
+      <div class="lados">
+        <button class="lado favor" data-lado="favor">👍 A favor</button>
+        <button class="lado contra" data-lado="contra">👎 En contra</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="medidor"><div class="f" id="mF" style="width:50%"></div><div class="c" id="mC" style="width:50%"></div></div>
+      <div class="grupos">
+        <div class="grupo favor"><h3>A favor <span class="cuenta" id="nF">0</span></h3><ul id="lF"></ul></div>
+        <div class="grupo contra"><h3>En contra <span class="cuenta" id="nC">0</span></h3><ul id="lC"></ul></div>
+      </div>
+      <div class="sinlado muted" id="sinLado"></div>
+    </div>
+
+    <div style="text-align:center">
+      <button class="salir" id="cambiarNombre">Cambiar nombre</button>
+      <div class="estado-con" id="con">Conectando…</div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+  const nuevoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+
+  let miId = store.get('foroId');
+  if (!miId) { miId = nuevoId(); store.set('foroId', miId); }
+  let miNombre = store.get('foroNombre') || '';
+  let estado = null;
+  let finTurno = 0, turnoMs = 20000;
+  let es = null;
+
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  }
+
+  async function api(ruta, datos = {}) {
+    try {
+      const r = await fetch('/api/' + ruta, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: miId, ...datos }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { toast(j.error || 'Error'); return false; }
+      return true;
+    } catch { toast('Sin conexión'); return false; }
+  }
+
+  function mostrar(pantalla) {
+    $('ingreso').classList.toggle('hidden', pantalla !== 'ingreso');
+    $('foro').classList.toggle('hidden', pantalla !== 'foro');
+  }
+
+  async function entrar() {
+    const n = $('nombre').value.trim();
+    if (!n) { toast('Escribe tu nombre'); return; }
+    if (await api('unirse', { nombre: n })) {
+      miNombre = n; store.set('foroNombre', n);
+      mostrar('foro');
+    }
+  }
+
+  $('entrar').onclick = entrar;
+  $('nombre').addEventListener('keydown', (e) => { if (e.key === 'Enter') entrar(); });
+  $('cambiarNombre').onclick = () => { $('nombre').value = miNombre; mostrar('ingreso'); $('nombre').focus(); };
+  document.querySelectorAll('.lado').forEach((b) => b.onclick = () => api('lado', { lado: b.dataset.lado }));
+  $('mano').onclick = () => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    api('mano');
+  };
+  $('ceder').onclick = () => api('ceder');
+
+  function li(p, oradorId) {
+    const el = document.createElement('li');
+    el.textContent = (p.id === oradorId ? '🎤 ' : '') + p.nombre + (p.id === miId ? ' (tú)' : '');
+    if (p.id === miId) el.classList.add('yo');
+    if (!p.online) el.classList.add('off');
+    if (p.id === oradorId) el.classList.add('habla');
+    return el;
+  }
+
+  function render() {
+    if (!estado) return;
+    const yo = estado.participantes.find((p) => p.id === miId);
+    // Si el servidor no nos conoce (reinicio, expiró) pero tenemos nombre, re-unirse
+    if (!yo && miNombre && !$('foro').classList.contains('hidden')) {
+      api('unirse', { nombre: miNombre }).then(() => { const l = store.get('foroLado'); if (l) api('lado', { lado: l }); });
+    }
+    if (yo && yo.lado) store.set('foroLado', yo.lado);
+
+    document.querySelectorAll('.lado').forEach((b) => b.classList.toggle('activo', !!yo && yo.lado === b.dataset.lado));
+
+    const o = estado.orador;
+    const oId = o ? o.id : null;
+    const fav = estado.participantes.filter((p) => p.lado === 'favor');
+    const con = estado.participantes.filter((p) => p.lado === 'contra');
+    const sin = estado.participantes.filter((p) => !p.lado);
+    $('nF').textContent = fav.length; $('nC').textContent = con.length;
+    $('lF').replaceChildren(...fav.map((p) => li(p, oId)));
+    $('lC').replaceChildren(...con.map((p) => li(p, oId)));
+    const tot = fav.length + con.length;
+    $('mF').style.width = (tot ? (fav.length / tot) * 100 : 50) + '%';
+    $('mC').style.width = (tot ? (con.length / tot) * 100 : 50) + '%';
+    $('sinLado').textContent = sin.length ? `Sin elegir aún (${sin.length}): ` + sin.map((p) => p.nombre).join(', ') : '';
+
+    const caja = $('orador');
+    caja.className = 'card orador ' + (o ? o.lado : 'libre');
+    if (o) {
+      const soyYo = o.id === miId;
+      $('oEtq').textContent = soyYo ? '¡Tienes la palabra!' : 'Tiene la palabra · ' + (o.lado === 'favor' ? 'A favor' : 'En contra');
+      $('oNombre').textContent = '🎤 ' + o.nombre;
+      $('oReloj').classList.remove('hidden');
+      $('mano').disabled = true;
+      $('mano').textContent = soyYo ? '🎤 Estás hablando' : '⏳ Espera tu turno';
+      $('ceder').classList.toggle('hidden', !soyYo);
+    } else {
+      $('oEtq').textContent = 'Nadie tiene la palabra';
+      $('oNombre').textContent = '✋ La palabra está libre';
+      $('oReloj').classList.add('hidden');
+      $('mano').disabled = !yo || !yo.lado;
+      $('mano').textContent = yo && yo.lado ? '✋ Alzar la mano' : '✋ Elige tu postura para alzar la mano';
+      $('ceder').classList.add('hidden');
+    }
+  }
+
+  function tick() {
+    if (estado && estado.orador) {
+      const r = Math.max(0, finTurno - Date.now());
+      $('oSeg').textContent = Math.ceil(r / 1000);
+      $('oBarra').style.width = (r / turnoMs) * 100 + '%';
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  let oradorPrevio = null;
+  function conectar() {
+    if (es) es.close();
+    es = new EventSource('/events?id=' + encodeURIComponent(miId));
+    es.onopen = () => { $('con').textContent = '🟢 Conectado en tiempo real'; };
+    es.onerror = () => { $('con').textContent = '🟠 Reconectando…'; };
+    es.onmessage = (ev) => {
+      estado = JSON.parse(ev.data);
+      turnoMs = estado.turnoMs || 20000;
+      if (estado.orador) finTurno = Date.now() + estado.orador.restante;
+      const nuevo = estado.orador ? estado.orador.id : null;
+      if (nuevo && nuevo !== oradorPrevio && navigator.vibrate) navigator.vibrate([60, 40, 60]);
+      oradorPrevio = nuevo;
+      render();
+    };
+  }
+
+  // Al volver a la app (el celular suspende pestañas), reconectar
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && (!es || es.readyState === 2)) conectar();
+  });
+
+  conectar();
+  if (miNombre) {
+    api('unirse', { nombre: miNombre }).then((ok) => mostrar(ok ? 'foro' : 'ingreso'));
+  } else {
+    mostrar('ingreso');
+    $('nombre').focus();
+  }
+})();
+</script>
+</body>
+</html>
