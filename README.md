@@ -6,7 +6,15 @@ Web app for phones (iOS and Android, no install) for a forum:
 - Both groups show up **in real time** on every phone, with counts and a balance bar.
 - **✋ Alzar la mano** gives that person the floor for **20 seconds**, and everyone sees who is speaking with a countdown. When time runs out (or they tap "ceder la palabra"), someone else can raise their hand.
 
-## Run it locally (same WiFi network)
+## Link (GitHub Pages)
+
+**https://jpm144.github.io/aw/**
+
+- Separate rooms for different forums: `https://jpm144.github.io/aw/?sala=forum2`
+- Real-time sync uses a free public MQTT broker (EMQX, with HiveMQ and Mosquitto as fallbacks). It needs no account or server of your own.
+- Turn the link into a QR code and put it on screen for people to join.
+
+## Local version with your own server (optional)
 
 Requires Node.js 18+. No dependencies to install.
 
